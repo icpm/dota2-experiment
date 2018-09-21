@@ -11,6 +11,7 @@ parser.add_argument('--batch_size', type=int, default=24, help='training batch s
 parser.add_argument('--test_batch_size', type=int, default=10, help='testing batch size')
 parser.add_argument('--epochs', type=int, default=200, help='number of epochs to train for')
 parser.add_argument('--lr', type=float, default=5e-4, help='Learning Rate. Default=0.01')
+parser.add_argument('--pretrained', '-p', action='store_true', help='whether to use pretrained model')
 parser.add_argument('--seed', type=int, default=123, help='random seed to use. Default=123')
 
 
@@ -18,7 +19,7 @@ args = parser.parse_args()
 
 
 def main():
-    domain_adaption_solver = OneHotCrossEntropy(args)
+    domain_adaption_solver = MultiHotMSELoss(args)
     domain_adaption_solver.run()
 
 

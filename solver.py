@@ -19,6 +19,7 @@ class OneHotCrossEntropy(object):
         self.epochs = config.epochs
         self.batch_size = config.batch_size
         self.test_batch_size = config.test_batch_size
+        self.pretrained = config.pretrained
         self.criterion = None
         self.optimizer = None
         self.scheduler = None
@@ -34,7 +35,7 @@ class OneHotCrossEntropy(object):
             self.device = torch.device('cuda')
         else:
             self.device = torch.device('cpu')
-        self.model = get_model(pretrained=False).to(self.device)
+        self.model = get_model(pretrained=self.pretrained).to(self.device)
         self.criterion = nn.CrossEntropyLoss().to(self.device)
         self.optimizer = torch.optim.SGD(self.model.parameters(), self.lr, momentum=0.9)
         self.scheduler = ReduceLROnPlateau(self.optimizer, 'min', patience=1, verbose=True)
@@ -91,7 +92,7 @@ class OneHotCrossEntropy(object):
     def run(self):
         self.build_model()
         self.build_dataloader()
-        result_dir = './ont_hot CrossEntropyLoss'
+        result_dir = './ont_hot_pretrained'
         if not os.path.exists(result_dir):
             os.makedirs(result_dir)
         for epoch in range(1, self.epochs + 1):
@@ -117,6 +118,7 @@ class MultiHotMSELoss(object):
         self.epochs = config.epochs
         self.batch_size = config.batch_size
         self.test_batch_size = config.test_batch_size
+        self.pretrained = config.pretrained
         self.criterion = None
         self.optimizer = None
         self.scheduler = None
@@ -132,7 +134,7 @@ class MultiHotMSELoss(object):
             self.device = torch.device('cuda')
         else:
             self.device = torch.device('cpu')
-        self.model = get_model(pretrained=False).to(self.device)
+        self.model = get_model(pretrained=self.pretrained).to(self.device)
         self.criterion = nn.MSELoss().to(self.device)
         self.optimizer = torch.optim.SGD(self.model.parameters(), self.lr, momentum=0.9)
         self.scheduler = ReduceLROnPlateau(self.optimizer, 'min', patience=1, verbose=True)
@@ -187,7 +189,7 @@ class MultiHotMSELoss(object):
     def run(self):
         self.build_model()
         self.build_dataloader()
-        result_dir = './multi_hot MSELoss'
+        result_dir = './multi_hot_pretrained'
         if not os.path.exists(result_dir):
             os.makedirs(result_dir)
         for epoch in range(1, self.epochs + 1):
