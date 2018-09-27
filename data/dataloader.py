@@ -18,8 +18,9 @@ _all_videos = ('bkb',
 
 
 class TenTrainSet(Dataset):
-    def __init__(self, image_dir, input_transform=None):
+    def __init__(self, image_dir, input_transform=None, fold=0):
         super(TenTrainSet, self).__init__()
+        self.fold = fold
         self.image_filenames = [os.path.join(image_dir, x)
                                 for x in listdir(image_dir) if self.is_image_file(x) and self.is_valid(x)]
         self.input_transform = input_transform
@@ -44,18 +45,17 @@ class TenTrainSet(Dataset):
     def is_image_file(file_name):
         return any(file_name.endswith(extension) for extension in [".png", ".jpg", ".jpeg"])
 
-    @staticmethod
-    def is_valid(file_name):
+    def is_valid(self, file_name):
         file_index = int(file_name.split('_')[-1].split('.')[0])
-        return file_index % 4 != 0
+        return file_index % 5 != self.fold
 
 
 class TenTestSet(Dataset):
-    def __init__(self, image_dir, input_transform=None):
+    def __init__(self, image_dir, input_transform=None, fold=0):
         super(TenTestSet, self).__init__()
+        self.fold = fold
         self.image_filenames = [os.path.join(image_dir, x)
                                 for x in listdir(image_dir) if self.is_image_file(x) and self.is_valid(x)]
-
         self.input_transform = input_transform
 
     def __getitem__(self, index):
@@ -78,10 +78,9 @@ class TenTestSet(Dataset):
     def is_image_file(file_name):
         return any(file_name.endswith(extension) for extension in [".png", ".jpg", ".jpeg"])
 
-    @staticmethod
-    def is_valid(file_name):
+    def is_valid(self, file_name):
         file_index = int(file_name.split('_')[-1].split('.')[0])
-        return file_index % 4 == 0
+        return file_index % 5 == self.fold
 
 
 def load_img(file_path):
@@ -89,15 +88,15 @@ def load_img(file_path):
     return img
 
 
-def get_dataloader(batch_size, test_batch_size, image_dir='../frames'):
+def get_dataloader(batch_size, test_batch_size, fold=0, image_dir='../frames'):
     transform = transforms.Compose([
         transforms.RandomCrop(224),
         transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
 
-    train_set = TenTrainSet(image_dir=image_dir, input_transform=transform)
-    test_set = TenTestSet(image_dir=image_dir, input_transform=transform)
+    train_set = TenTrainSet(image_dir=image_dir, input_transform=transform, fold=fold)
+    test_set = TenTestSet(image_dir=image_dir, input_transform=transform, fold=fold)
     training_data_loader = DataLoader(dataset=train_set, batch_size=batch_size, shuffle=True, num_workers=4)
     testing_data_loader = DataLoader(dataset=test_set, batch_size=test_batch_size, shuffle=False, num_workers=4)
 

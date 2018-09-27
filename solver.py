@@ -12,7 +12,7 @@ from misc import progress_bar, record_info
 from models.model import get_model
 
 
-class OneHotCrossEntropy(object):
+class OneHot(object):
     def __init__(self, config):
         self.model = None
         self.lr = config.lr
@@ -40,8 +40,8 @@ class OneHotCrossEntropy(object):
         self.optimizer = torch.optim.SGD(self.model.parameters(), self.lr, momentum=0.9)
         self.scheduler = ReduceLROnPlateau(self.optimizer, 'min', patience=1, verbose=True)
 
-    def build_dataloader(self):
-        self.train_loader, self.test_loader = dataloader.get_dataloader(self.batch_size, self.test_batch_size)
+    def build_dataloader(self, fold):
+        self.train_loader, self.test_loader = dataloader.get_dataloader(self.batch_size, self.test_batch_size, fold=fold)
 
     def save(self):
         model_out_path = "model.pth"
@@ -91,12 +91,13 @@ class OneHotCrossEntropy(object):
 
     def run(self):
         self.build_model()
-        self.build_dataloader()
-        result_dir = './ont_hot_pretrained'
+        result_dir = './ont_hot_pretrained' if self.pretrained else './ont_hot'
         if not os.path.exists(result_dir):
             os.makedirs(result_dir)
         for epoch in range(1, self.epochs + 1):
-            print("\n===> Epoch {} starts:".format(epoch))
+            fold = (epoch - 1) % 5
+            print("\n===> Epoch {} starts: (fold: {})".format(epoch, fold))
+            self.build_dataloader(fold)
 
             train_loss, train_accuracy = self.train()
             test_loss, test_accuracy = self.test()
@@ -111,7 +112,7 @@ class OneHotCrossEntropy(object):
             record_info(test_loss, result_dir + '/test_loss.csv')
 
 
-class MultiHotMSELoss(object):
+class MultiHot(object):
     def __init__(self, config):
         self.model = None
         self.lr = config.lr
@@ -139,8 +140,8 @@ class MultiHotMSELoss(object):
         self.optimizer = torch.optim.SGD(self.model.parameters(), self.lr, momentum=0.9)
         self.scheduler = ReduceLROnPlateau(self.optimizer, 'min', patience=1, verbose=True)
 
-    def build_dataloader(self):
-        self.train_loader, self.test_loader = dataloader.get_dataloader(self.batch_size, self.test_batch_size)
+    def build_dataloader(self, fold):
+        self.train_loader, self.test_loader = dataloader.get_dataloader(self.batch_size, self.test_batch_size, fold)
 
     def save(self):
         model_out_path = "model.pth"
@@ -188,12 +189,13 @@ class MultiHotMSELoss(object):
 
     def run(self):
         self.build_model()
-        self.build_dataloader()
-        result_dir = './multi_hot_pretrained'
+        result_dir = './multi_hot_pretrained' if self.pretrained else './multi_hot'
         if not os.path.exists(result_dir):
             os.makedirs(result_dir)
         for epoch in range(1, self.epochs + 1):
-            print("\n===> Epoch {} starts:".format(epoch))
+            fold = (epoch - 1) % 5
+            print("\n===> Epoch {} starts: (fold: {})".format(epoch, fold))
+            self.build_dataloader(fold)
 
             train_loss, train_accuracy = self.train()
             test_loss, test_accuracy = self.test()
