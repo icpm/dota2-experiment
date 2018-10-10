@@ -1,15 +1,200 @@
 from __future__ import print_function
 
 import os
+
 import numpy as np
 import torch
-import torch.backends.cudnn as cudnn
 import torch.nn as nn
+from PIL import Image
+from models.transform import TransformerNet, VGG16
+from torch.backends import cudnn
+from torch.optim import Adam
 from torch.optim.lr_scheduler import ReduceLROnPlateau
+from torchvision import transforms
 
 from data import dataloader
 from misc import progress_bar, record_info
 from models.model import alexnet
+
+
+class Trainer(object):
+    def __init__(self, args):
+        # device configuration
+        self.cuda = torch.cuda.is_available()
+        self.device = torch.device('cuda' if self.cuda else 'cpu')
+
+        # dataset
+        self.train_loader = None
+        self.style_image = args.style_image
+        self.style_size = None
+
+        # style
+        self.gram_style = None
+        self.vgg = None
+
+        # model
+        self.transformer = None
+        self.optimizer = None
+        self.criterion = None
+        self.seed = 42
+
+        # hyper-parameters
+        self.image_size = 256
+        self.batch_size = 12
+        self.lr = 1e-3
+        self.content_weight = 1e5
+        self.style_weight = 1e10
+
+        # general
+        self.log_interval = args.log_interval
+
+    def get_style(self):
+        # set up style
+        style_transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Lambda(lambda x: x.mul(255))
+        ])
+        style = self.load_image(self.style_image, size=self.style_size)
+        style = style_transform(style)
+        style = style.repeat(self.batch_size, 1, 1, 1)
+
+        # set up feature extractor
+        self.vgg = VGG16(requires_grad=False).to(self.device)
+
+        style_v = style.to(self.device)
+        style_v = self.normalize_batch(style_v)
+        features_style = self.vgg(style_v)
+        self.gram_style = [self.gram_matrix(y) for y in features_style]
+
+    def build_model(self):
+        np.random.seed(self.seed)
+        torch.manual_seed(self.seed)
+        self.transformer = TransformerNet().to(self.device)
+        self.optimizer = Adam(self.transformer.parameters(), self.lr)
+        self.criterion = torch.nn.MSELoss()
+
+        if self.cuda:
+            torch.cuda.manual_seed(self.seed)
+            cudnn.benchmark = True
+            self.criterion.cuda()
+
+    @staticmethod
+    def gram_matrix(y):
+        (batches, channel, height, width) = y.size()
+        features = y.view(batches, channel, width * height)
+        features_t = features.transpose(1, 2)
+        gram = features.bmm(features_t) / (channel * height * width)
+        return gram
+
+    @staticmethod
+    def normalize_batch(batch):
+        # normalize using imageNet mean and std
+        mean = batch.data.new(batch.data.size())
+        std = batch.data.new(batch.data.size())
+        mean[:, 0, :, :] = 0.485
+        mean[:, 1, :, :] = 0.456
+        mean[:, 2, :, :] = 0.406
+        std[:, 0, :, :] = 0.229
+        std[:, 1, :, :] = 0.224
+        std[:, 2, :, :] = 0.225
+        batch /= 255.0
+        batch -= mean
+        batch = batch / std
+        return batch
+
+    @staticmethod
+    def load_image(filename, size=None, scale=None):
+        image = Image.open(filename)
+        if size is not None:
+            image = image.resize((size, size), Image.ANTIALIAS)
+        elif scale is not None:
+            image = image.resize((int(image.size[0] / scale), int(image.size[1] / scale)), Image.ANTIALIAS)
+        return image
+
+    def train(self, data):
+        self.transformer.train()
+
+        # get data and target
+        data = data.to(self.device)
+        target = self.transformer(data)
+        data = self.normalize_batch(data)
+        target = self.normalize_batch(target)
+
+        # calculate content loss
+        target_feature = self.vgg(target)
+        data_feature = self.vgg(data)
+        content_loss = self.content_weight * self.criterion(target_feature.relu2_2, data_feature.relu2_2)
+
+        # calculate style loss
+        style_loss = 0.
+        for current_target_feature, current_gram_style in zip(target_feature, self.gram_style):
+            current_target_feature = self.gram_matrix(current_target_feature)
+            style_loss += self.criterion(current_target_feature, current_gram_style[:len(data), :, :])
+        style_loss *= self.style_weight
+
+        # do the backpropagation
+        total_loss = content_loss + style_loss
+        self.optimizer.zero_grad()
+        total_loss.backward()
+        self.optimizer.step()
+
+        content_loss.item()
+        style_loss.item()
+
+    def validate(self):
+        self.get_style()
+        self.build_model()
+
+
+class Stylizer(object):
+    """
+    The Stylizer that transforms content images to one in expected style
+    """
+    def __init__(self, args):
+        # device configuration
+        self.cuda = torch.cuda.is_available()
+        self.device = torch.device('cuda' if self.cuda else 'cpu')
+
+        self.model = args.model
+        self.content_image = args.content_image
+        self.output_image = args.output_image
+        self.content_scale = args.content_scale
+        self.cuda = torch.cuda.is_available()
+
+    @staticmethod
+    def save_image(filename, data):
+        img = data.clone().clamp(0, 255).numpy()
+        img = img.transpose(1, 2, 0).astype("uint8")
+        img = Image.fromarray(img)
+        img.save(filename)
+
+    @staticmethod
+    def load_image(filename, size=None, scale=None):
+        out_image = Image.open(filename)  # open the file
+
+        # apply some potential changes
+        if size is not None:
+            out_image = out_image.resize((size, size), Image.ANTIALIAS)
+        if scale is not None:
+            out_image = out_image.resize((int(out_image.size[0] / scale), int(out_image.size[1] / scale)), Image.ANTIALIAS)
+
+        return out_image
+
+    def stylize(self):
+        # load content image
+        current_content_image = self.load_image(self.content_image, scale=self.content_scale)
+        content_transform = transforms.Compose([transforms.ToTensor(), transforms.Lambda(lambda x: x.mul(255))])
+        current_content_image = content_transform(current_content_image).unsqueeze(0)
+
+        # cast content images to Tensor
+        current_content_image = (current_content_image.cuda() if self.cuda else current_content_image)
+        with torch.no_grad():
+            current_content_image = current_content_image.to(self.device)
+
+            # load transformer model
+            style_model = TransformerNet().to(self.device)
+            style_model.load_state_dict(torch.load(self.model))
+            output = style_model(current_content_image)
 
 
 class OneHot(object):
