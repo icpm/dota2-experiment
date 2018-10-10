@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 import os
+
 import numpy as np
 import torch
 import torch.backends.cudnn as cudnn
@@ -89,11 +90,23 @@ class OneHot(object):
                              % (test_loss / (batch_num + 1), test_correct / total))
         return test_loss / total, test_correct / total
 
-    def run(self):
-        self.build_model()
+    def save_data(self, t_a, t_l, s_a, s_l):
         result_dir = './ont_hot_pretrained' if self.pretrained else './ont_hot'
         if not os.path.exists(result_dir):
             os.makedirs(result_dir)
+
+        train_acc = {'Train Accuracy': [t_a]}
+        train_loss = {'Train Loss': [t_l]}
+        test_acc = {'Test Accuracy': [s_a]}
+        test_loss = {'Test Loss': [s_l]}
+        record_info(train_acc, result_dir + '/train_acc.csv')
+        record_info(train_loss, result_dir + '/train_loss.csv')
+        record_info(test_acc, result_dir + '/test_acc.csv')
+        record_info(test_loss, result_dir + '/test_loss.csv')
+
+    def run(self):
+        self.build_model()
+
         for epoch in range(1, self.epochs + 1):
             fold = (epoch - 1) % 5
             print("\n===> Epoch {} starts: (fold: {})".format(epoch, fold))
@@ -102,14 +115,7 @@ class OneHot(object):
             train_loss, train_accuracy = self.train()
             test_loss, test_accuracy = self.test()
 
-            train_acc = {'Train Accuracy': [train_accuracy]}
-            train_loss = {'Train Loss': [train_loss]}
-            test_acc = {'Test Accuracy': [test_accuracy]}
-            test_loss = {'Test Loss': [test_loss]}
-            record_info(train_acc, result_dir + '/train_acc.csv')
-            record_info(train_loss, result_dir + '/train_loss.csv')
-            record_info(test_acc, result_dir + '/test_acc.csv')
-            record_info(test_loss, result_dir + '/test_loss.csv')
+            self.save_data(train_accuracy, train_loss, test_accuracy, test_loss)
 
 
 class MultiHot(object):
@@ -187,11 +193,22 @@ class MultiHot(object):
                              % (test_loss / (batch_num + 1), test_correct / total))
         return test_loss / total, test_correct / total
 
-    def run(self):
-        self.build_model()
+    def save_data(self, t_a, t_l, s_a, s_l):
         result_dir = './multi_hot_pretrained' if self.pretrained else './multi_hot'
         if not os.path.exists(result_dir):
             os.makedirs(result_dir)
+
+        train_acc = {'Train Accuracy': [t_a]}
+        train_loss = {'Train Loss': [t_l]}
+        test_acc = {'Test Accuracy': [s_a]}
+        test_loss = {'Test Loss': [s_l]}
+        record_info(train_acc, result_dir + '/train_acc.csv')
+        record_info(train_loss, result_dir + '/train_loss.csv')
+        record_info(test_acc, result_dir + '/test_acc.csv')
+        record_info(test_loss, result_dir + '/test_loss.csv')
+
+    def run(self):
+        self.build_model()
         for epoch in range(1, self.epochs + 1):
             fold = (epoch - 1) % 5
             print("\n===> Epoch {} starts: (fold: {})".format(epoch, fold))
@@ -200,11 +217,4 @@ class MultiHot(object):
             train_loss, train_accuracy = self.train()
             test_loss, test_accuracy = self.test()
 
-            train_acc = {'Train Accuracy': [train_accuracy]}
-            train_loss = {'Train Loss': [train_loss]}
-            test_acc = {'Test Accuracy': [test_accuracy]}
-            test_loss = {'Test Loss': [test_loss]}
-            record_info(train_acc, result_dir + '/train_acc.csv')
-            record_info(train_loss, result_dir + '/train_loss.csv')
-            record_info(test_acc, result_dir + '/test_acc.csv')
-            record_info(test_loss, result_dir + '/test_loss.csv')
+            self.save_data(train_accuracy, train_loss, test_accuracy, test_loss)
