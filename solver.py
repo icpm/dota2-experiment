@@ -9,7 +9,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from data import dataloader
 from misc import progress_bar, record_info
-from models.model import get_model
+from models.model import alexnet
 
 
 class OneHot(object):
@@ -35,7 +35,7 @@ class OneHot(object):
             self.device = torch.device('cuda')
         else:
             self.device = torch.device('cpu')
-        self.model = get_model(pretrained=self.pretrained).to(self.device)
+        self.model = alexnet(pretrained=self.pretrained).to(self.device)
         self.criterion = nn.CrossEntropyLoss().to(self.device)
         self.optimizer = torch.optim.SGD(self.model.parameters(), self.lr, momentum=0.9)
         self.scheduler = ReduceLROnPlateau(self.optimizer, 'min', patience=1, verbose=True)
@@ -62,10 +62,12 @@ class OneHot(object):
             loss = self.criterion(prediction, target)
             loss.backward()
             self.optimizer.step()
-            # self.scheduler.step(loss.data.cpu().numpy())
             train_loss += loss.item()
             train_correct += np.sum(torch.max(prediction, 1)[1].cpu().numpy() == target.cpu().numpy())
             total += data.size(0)
+            self.model.conv1.weight.data = torch.zeros((64, 3, 11, 11)).to(self.device)
+            print(self.model.conv1.weight.data)
+
             progress_bar(batch_num, len(self.train_loader), 'train loss: %.4f | accuracy: %.4f'
                          % (train_loss / (batch_num + 1), train_correct / total))
         return train_loss / total, train_correct / total
@@ -91,9 +93,9 @@ class OneHot(object):
 
     def run(self):
         self.build_model()
-        result_dir = './ont_hot_pretrained' if self.pretrained else './ont_hot'
-        if not os.path.exists(result_dir):
-            os.makedirs(result_dir)
+        # result_dir = './ont_hot_pretrained' if self.pretrained else './ont_hot'
+        # if not os.path.exists(result_dir):
+        #     os.makedirs(result_dir)
         for epoch in range(1, self.epochs + 1):
             fold = (epoch - 1) % 5
             print("\n===> Epoch {} starts: (fold: {})".format(epoch, fold))
@@ -102,14 +104,14 @@ class OneHot(object):
             train_loss, train_accuracy = self.train()
             test_loss, test_accuracy = self.test()
 
-            train_acc = {'Train Accuracy': [train_accuracy]}
-            train_loss = {'Train Loss': [train_loss]}
-            test_acc = {'Test Accuracy': [test_accuracy]}
-            test_loss = {'Test Loss': [test_loss]}
-            record_info(train_acc, result_dir + '/train_acc.csv')
-            record_info(train_loss, result_dir + '/train_loss.csv')
-            record_info(test_acc, result_dir + '/test_acc.csv')
-            record_info(test_loss, result_dir + '/test_loss.csv')
+            # train_acc = {'Train Accuracy': [train_accuracy]}
+            # train_loss = {'Train Loss': [train_loss]}
+            # test_acc = {'Test Accuracy': [test_accuracy]}
+            # test_loss = {'Test Loss': [test_loss]}
+            # record_info(train_acc, result_dir + '/train_acc.csv')
+            # record_info(train_loss, result_dir + '/train_loss.csv')
+            # record_info(test_acc, result_dir + '/test_acc.csv')
+            # record_info(test_loss, result_dir + '/test_loss.csv')
 
 
 class MultiHot(object):
@@ -135,7 +137,7 @@ class MultiHot(object):
             self.device = torch.device('cuda')
         else:
             self.device = torch.device('cpu')
-        self.model = get_model(pretrained=self.pretrained).to(self.device)
+        self.model = alexnet(pretrained=self.pretrained).to(self.device)
         self.criterion = nn.MSELoss().to(self.device)
         self.optimizer = torch.optim.SGD(self.model.parameters(), self.lr, momentum=0.9)
         self.scheduler = ReduceLROnPlateau(self.optimizer, 'min', patience=1, verbose=True)
@@ -200,11 +202,11 @@ class MultiHot(object):
             train_loss, train_accuracy = self.train()
             test_loss, test_accuracy = self.test()
 
-            train_acc = {'Train Accuracy': [train_accuracy]}
-            train_loss = {'Train Loss': [train_loss]}
-            test_acc = {'Test Accuracy': [test_accuracy]}
-            test_loss = {'Test Loss': [test_loss]}
-            record_info(train_acc, result_dir + '/train_acc.csv')
-            record_info(train_loss, result_dir + '/train_loss.csv')
-            record_info(test_acc, result_dir + '/test_acc.csv')
-            record_info(test_loss, result_dir + '/test_loss.csv')
+            # train_acc = {'Train Accuracy': [train_accuracy]}
+            # train_loss = {'Train Loss': [train_loss]}
+            # test_acc = {'Test Accuracy': [test_accuracy]}
+            # test_loss = {'Test Loss': [test_loss]}
+            # record_info(train_acc, result_dir + '/train_acc.csv')
+            # record_info(train_loss, result_dir + '/train_loss.csv')
+            # record_info(test_acc, result_dir + '/test_acc.csv')
+            # record_info(test_loss, result_dir + '/test_loss.csv')
