@@ -17,36 +17,27 @@ from misc import progress_bar, record_info
 from models.model import alexnet
 
 
-class Trainer(object):
-    def __init__(self, args):
+class Stylizer(object):
+    def __init__(self, style_image):
         # device configuration
         self.cuda = torch.cuda.is_available()
         self.device = torch.device('cuda' if self.cuda else 'cpu')
 
-        # dataset
-        self.train_loader = None
-        self.style_image = args.style_image
+        self.style_image = style_image
         self.style_size = None
 
-        # style
         self.gram_style = None
         self.vgg = None
 
-        # model
         self.transformer = None
         self.optimizer = None
         self.criterion = None
         self.seed = 42
 
-        # hyper-parameters
-        self.image_size = 256
-        self.batch_size = 12
+        self.batch_size = 16
         self.lr = 1e-3
         self.content_weight = 1e5
         self.style_weight = 1e10
-
-        # general
-        self.log_interval = args.log_interval
 
     def get_style(self):
         # set up style
@@ -88,7 +79,6 @@ class Trainer(object):
 
     @staticmethod
     def normalize_batch(batch):
-        # normalize using imageNet mean and std
         mean = batch.data.new(batch.data.size())
         std = batch.data.new(batch.data.size())
         mean[:, 0, :, :] = 0.485
@@ -114,18 +104,14 @@ class Trainer(object):
     def train(self, data):
         self.transformer.train()
 
-        # get data and target
-        data = data.to(self.device)
         target = self.transformer(data)
         data = self.normalize_batch(data)
         target = self.normalize_batch(target)
 
-        # calculate content loss
         target_feature = self.vgg(target)
         data_feature = self.vgg(data)
         content_loss = self.content_weight * self.criterion(target_feature.relu2_2, data_feature.relu2_2)
 
-        # calculate style loss
         style_loss = 0.
         for current_target_feature, current_gram_style in zip(target_feature, self.gram_style):
             current_target_feature = self.gram_matrix(current_target_feature)
@@ -141,60 +127,12 @@ class Trainer(object):
         content_loss.item()
         style_loss.item()
 
+        # print(target.shape)
+        return target
+
     def validate(self):
         self.get_style()
         self.build_model()
-
-
-class Stylizer(object):
-    """
-    The Stylizer that transforms content images to one in expected style
-    """
-    def __init__(self, args):
-        # device configuration
-        self.cuda = torch.cuda.is_available()
-        self.device = torch.device('cuda' if self.cuda else 'cpu')
-
-        self.model = args.model
-        self.content_image = args.content_image
-        self.output_image = args.output_image
-        self.content_scale = args.content_scale
-        self.cuda = torch.cuda.is_available()
-
-    @staticmethod
-    def save_image(filename, data):
-        img = data.clone().clamp(0, 255).numpy()
-        img = img.transpose(1, 2, 0).astype("uint8")
-        img = Image.fromarray(img)
-        img.save(filename)
-
-    @staticmethod
-    def load_image(filename, size=None, scale=None):
-        out_image = Image.open(filename)  # open the file
-
-        # apply some potential changes
-        if size is not None:
-            out_image = out_image.resize((size, size), Image.ANTIALIAS)
-        if scale is not None:
-            out_image = out_image.resize((int(out_image.size[0] / scale), int(out_image.size[1] / scale)), Image.ANTIALIAS)
-
-        return out_image
-
-    def stylize(self):
-        # load content image
-        current_content_image = self.load_image(self.content_image, scale=self.content_scale)
-        content_transform = transforms.Compose([transforms.ToTensor(), transforms.Lambda(lambda x: x.mul(255))])
-        current_content_image = content_transform(current_content_image).unsqueeze(0)
-
-        # cast content images to Tensor
-        current_content_image = (current_content_image.cuda() if self.cuda else current_content_image)
-        with torch.no_grad():
-            current_content_image = current_content_image.to(self.device)
-
-            # load transformer model
-            style_model = TransformerNet().to(self.device)
-            style_model.load_state_dict(torch.load(self.model))
-            output = style_model(current_content_image)
 
 
 class OneHot(object):
@@ -213,6 +151,7 @@ class OneHot(object):
         self.seed = config.seed
         self.train_loader = None
         self.test_loader = None
+        self.stylizer = None
 
     def build_model(self):
         if self.GPU_IN_USE:
@@ -225,6 +164,11 @@ class OneHot(object):
         self.optimizer = torch.optim.SGD(self.model.parameters(), self.lr, momentum=0.9)
         self.scheduler = ReduceLROnPlateau(self.optimizer, 'min', patience=1, verbose=True)
 
+        # initialize stylizer
+        self.stylizer = Stylizer('./data/dota.jpg')
+        self.stylizer.build_model()
+        self.stylizer.get_style()
+
     def build_dataloader(self, fold):
         self.train_loader, self.test_loader = dataloader.get_dataloader(self.batch_size, self.test_batch_size, fold=fold)
 
@@ -232,6 +176,17 @@ class OneHot(object):
         model_out_path = "model.pth"
         torch.save(self.model, model_out_path)
         print("Checkpoint saved to {}".format(model_out_path))
+
+    def stylizing(self, weight):
+        out = None
+        for i in range(4):
+            data = weight[16 * i: 16 * i + 16]
+            temp = self.stylizer.train(data)
+            if i == 0:
+                out = temp
+            else:
+                out = torch.cat((out, temp))
+        return out
 
     def train(self):
         self.model.train()
@@ -250,8 +205,7 @@ class OneHot(object):
             train_loss += loss.item()
             train_correct += np.sum(torch.max(prediction, 1)[1].cpu().numpy() == target.cpu().numpy())
             total += data.size(0)
-            self.model.conv1.weight.data = torch.zeros((64, 3, 11, 11)).to(self.device)
-            print(self.model.conv1.weight.data)
+            # self.model.conv1.weight.data = self.stylizing(self.model.conv1.weight.data)
 
             progress_bar(batch_num, len(self.train_loader), 'train loss: %.4f | accuracy: %.4f'
                          % (train_loss / (batch_num + 1), train_correct / total))
@@ -276,11 +230,23 @@ class OneHot(object):
                              % (test_loss / (batch_num + 1), test_correct / total))
         return test_loss / total, test_correct / total
 
+    def save_data(self, t_a, t_l, s_a, s_l):
+        result_dir = './ont_hot_pretrained' if self.pretrained else './ont_hot'
+        if not os.path.exists(result_dir):
+            os.makedirs(result_dir)
+
+        train_acc = {'Train Accuracy': [t_a]}
+        train_loss = {'Train Loss': [t_l]}
+        test_acc = {'Test Accuracy': [s_a]}
+        test_loss = {'Test Loss': [s_l]}
+        record_info(train_acc, result_dir + '/train_acc.csv')
+        record_info(train_loss, result_dir + '/train_loss.csv')
+        record_info(test_acc, result_dir + '/test_acc.csv')
+        record_info(test_loss, result_dir + '/test_loss.csv')
+
     def run(self):
         self.build_model()
-        # result_dir = './ont_hot_pretrained' if self.pretrained else './ont_hot'
-        # if not os.path.exists(result_dir):
-        #     os.makedirs(result_dir)
+
         for epoch in range(1, self.epochs + 1):
             fold = (epoch - 1) % 5
             print("\n===> Epoch {} starts: (fold: {})".format(epoch, fold))
@@ -289,14 +255,7 @@ class OneHot(object):
             train_loss, train_accuracy = self.train()
             test_loss, test_accuracy = self.test()
 
-            # train_acc = {'Train Accuracy': [train_accuracy]}
-            # train_loss = {'Train Loss': [train_loss]}
-            # test_acc = {'Test Accuracy': [test_accuracy]}
-            # test_loss = {'Test Loss': [test_loss]}
-            # record_info(train_acc, result_dir + '/train_acc.csv')
-            # record_info(train_loss, result_dir + '/train_loss.csv')
-            # record_info(test_acc, result_dir + '/test_acc.csv')
-            # record_info(test_loss, result_dir + '/test_loss.csv')
+            # self.save_data(train_accuracy, train_loss, test_accuracy, test_loss)
 
 
 class MultiHot(object):
