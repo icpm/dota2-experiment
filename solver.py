@@ -10,7 +10,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from data import dataloader
 from misc import progress_bar, record_info
-from models.model import get_model
+from models.model import get_model, get_zero_short_model
 
 
 class OneHot(object):
@@ -116,6 +116,8 @@ class OneHot(object):
             test_loss, test_accuracy = self.test()
 
             self.save_data(train_accuracy, train_loss, test_accuracy, test_loss)
+
+        self.save()
 
 
 class MultiHot(object):
