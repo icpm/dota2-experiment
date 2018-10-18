@@ -36,7 +36,8 @@ class OneHot(object):
             self.device = torch.device('cuda')
         else:
             self.device = torch.device('cpu')
-        self.model = get_model(pretrained=self.pretrained).to(self.device)
+        self.model = get_zero_short_model(pretrained=self.pretrained)
+        self.model.load_state_dict(torch.load('./models/model.pth'))
         self.criterion = nn.CrossEntropyLoss().to(self.device)
         self.optimizer = torch.optim.SGD(self.model.parameters(), self.lr, momentum=0.9)
         self.scheduler = ReduceLROnPlateau(self.optimizer, 'min', patience=1, verbose=True)
