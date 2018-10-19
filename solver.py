@@ -29,6 +29,7 @@ class OneHot(object):
         self.seed = config.seed
         self.train_loader = None
         self.test_loader = None
+        self.label = None
 
     def build_model(self):
         if self.GPU_IN_USE:
@@ -45,9 +46,31 @@ class OneHot(object):
     def build_dataloader(self):
         self.train_loader, self.test_loader = dataloader.get_dataloader(self.batch_size, self.test_batch_size)
 
+    def train(self):
+
+        self.model.eval()
+        count = np.zeros(10)
+        res = np.zeros((10, 64, 56, 56))
+
+        with torch.no_grad():
+            for (data, target) in self.train_loader:
+                data, target = data.to(self.device), target.to(self.device).float()
+                prediction = self.model(data)
+                target = torch.max(target, 1)[1]
+
+                for i in range(prediction.shape[0]):
+                    _data = prediction[i].data.cpu().numpy()
+                    _target = target[i].data.cpu().numpy()
+
+                    res[_target] = np.add(res[_target], _data)
+                    count[_target] += 1
+
+        for k, v in enumerate(res):
+            res[k] = np.divide(v, count[k])
+        self.label = torch.from_numpy(res).to(self.device)
+
     def test(self):
         self.model.eval()
-        test_loss = 0
         test_correct = 0
         total = 0
 
@@ -55,12 +78,28 @@ class OneHot(object):
             for batch_num, (data, target) in enumerate(self.test_loader):
                 data, target = data.to(self.device), target.to(self.device).float()
                 prediction = self.model(data)
+                target = torch.max(target, 1)[1]
 
-                # print(prediction.shape)
+                for i in range(prediction.shape[0]):
+                    _data = prediction[i]
+                    _target = self.get_label(_data)
+
+                    test_correct += 1 if _target.numpy() == target[i].cpu().numpy() else 0
+
                 total += data.size(0)
-                progress_bar(batch_num, len(self.test_loader), 'test loss: %.4f | accuracy: %.4f'
-                             % (test_loss / (batch_num + 1), test_correct / total))
-        return test_loss / total, test_correct / total
+                progress_bar(batch_num, len(self.test_loader), 'accuracy: %.4f' % (test_correct / total))
+        return total, test_correct / total
+
+    def get_label(self, prediction):
+        temp = torch.zeros(10)
+        for index, j in enumerate(self.label):
+            _t = prediction - j.float()
+            _t = torch.mul(_t, _t)
+            temp[index] = torch.sum(_t)
+
+        _target = torch.min(temp, 0)[1]
+
+        return _target
 
     def save_data(self, s_a, s_l):
         result_dir = './ont_hot_pretrained' if self.pretrained else './ont_hot'
@@ -75,12 +114,8 @@ class OneHot(object):
     def run(self):
         self.build_model()
         self.build_dataloader()
-        for epoch in range(1, self.epochs + 1):
-            fold = (epoch - 1) % 5
-            print("\n===> Epoch {} starts: (fold: {})".format(epoch, fold))
-
-            test_loss, test_accuracy = self.test()
-            # self.save_data(test_accuracy, test_loss)
+        self.train()
+        self.test()
 
 
 class MultiHot(object):
