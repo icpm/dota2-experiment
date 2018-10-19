@@ -3,8 +3,7 @@ import math
 import torch.utils.model_zoo as model_zoo
 
 
-__all__ = ['ResNet', 'resnet18', 'resnet34', 'resnet50', 'resnet101',
-           'resnet152']
+__all__ = ['get_model', 'get_zero_short_model']
 
 
 model_urls = {
@@ -95,7 +94,7 @@ class Bottleneck(nn.Module):
 
 class ResNet(nn.Module):
 
-    def __init__(self, block, layers, num_classes=1000):
+    def __init__(self, block, layers, num_classes=10):
         self.inplanes = 64
         super(ResNet, self).__init__()
         self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3,
@@ -282,4 +281,5 @@ def get_model(pretrained=False):
 
 def get_zero_short_model(pretrained=False):
     net = zero_shot_resnet152(pretrained=pretrained, num_classes=10)
+    net.fc = nn.Linear(2048, 10)
     return net

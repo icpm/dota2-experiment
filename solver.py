@@ -32,45 +32,18 @@ class OneHot(object):
 
     def build_model(self):
         if self.GPU_IN_USE:
-            cudnn.benchmark = True
             self.device = torch.device('cuda')
+            cudnn.benchmark = True
         else:
             self.device = torch.device('cpu')
-        self.model = get_zero_short_model(pretrained=self.pretrained)
+        self.model = get_zero_short_model(pretrained=self.pretrained).to(self.device)
         self.model.load_state_dict(torch.load('./models/model.pth'))
         self.criterion = nn.CrossEntropyLoss().to(self.device)
         self.optimizer = torch.optim.SGD(self.model.parameters(), self.lr, momentum=0.9)
         self.scheduler = ReduceLROnPlateau(self.optimizer, 'min', patience=1, verbose=True)
 
-    def build_dataloader(self, fold):
-        self.train_loader, self.test_loader = dataloader.get_dataloader(self.batch_size, self.test_batch_size, fold=fold)
-
-    def save(self):
-        model_out_path = "model.pth"
-        torch.save(self.model, model_out_path)
-        print("Checkpoint saved to {}".format(model_out_path))
-
-    def train(self):
-        self.model.train()
-        train_loss = 0
-        train_correct = 0
-        total = 0
-
-        for batch_num, (data, target) in enumerate(self.train_loader):
-            data, target = data.to(self.device), target.to(self.device).float()
-            self.optimizer.zero_grad()
-            prediction = self.model(data)
-            target = torch.max(target, 1)[1]
-            loss = self.criterion(prediction, target)
-            loss.backward()
-            self.optimizer.step()
-            # self.scheduler.step(loss.data.cpu().numpy())
-            train_loss += loss.item()
-            train_correct += np.sum(torch.max(prediction, 1)[1].cpu().numpy() == target.cpu().numpy())
-            total += data.size(0)
-            progress_bar(batch_num, len(self.train_loader), 'train loss: %.4f | accuracy: %.4f'
-                         % (train_loss / (batch_num + 1), train_correct / total))
-        return train_loss / total, train_correct / total
+    def build_dataloader(self):
+        self.train_loader, self.test_loader = dataloader.get_dataloader(self.batch_size, self.test_batch_size)
 
     def test(self):
         self.model.eval()
@@ -82,43 +55,32 @@ class OneHot(object):
             for batch_num, (data, target) in enumerate(self.test_loader):
                 data, target = data.to(self.device), target.to(self.device).float()
                 prediction = self.model(data)
-                target = torch.max(target, 1)[1]
-                loss = self.criterion(prediction, target)
-                test_loss += loss.item()
-                test_correct += np.sum(torch.max(prediction, 1)[1].cpu().numpy() == target.cpu().numpy())
+
+                # print(prediction.shape)
                 total += data.size(0)
                 progress_bar(batch_num, len(self.test_loader), 'test loss: %.4f | accuracy: %.4f'
                              % (test_loss / (batch_num + 1), test_correct / total))
         return test_loss / total, test_correct / total
 
-    def save_data(self, t_a, t_l, s_a, s_l):
+    def save_data(self, s_a, s_l):
         result_dir = './ont_hot_pretrained' if self.pretrained else './ont_hot'
         if not os.path.exists(result_dir):
             os.makedirs(result_dir)
 
-        train_acc = {'Train Accuracy': [t_a]}
-        train_loss = {'Train Loss': [t_l]}
         test_acc = {'Test Accuracy': [s_a]}
         test_loss = {'Test Loss': [s_l]}
-        record_info(train_acc, result_dir + '/train_acc.csv')
-        record_info(train_loss, result_dir + '/train_loss.csv')
         record_info(test_acc, result_dir + '/test_acc.csv')
         record_info(test_loss, result_dir + '/test_loss.csv')
 
     def run(self):
         self.build_model()
-
+        self.build_dataloader()
         for epoch in range(1, self.epochs + 1):
             fold = (epoch - 1) % 5
             print("\n===> Epoch {} starts: (fold: {})".format(epoch, fold))
-            self.build_dataloader(fold)
 
-            train_loss, train_accuracy = self.train()
             test_loss, test_accuracy = self.test()
-
-            self.save_data(train_accuracy, train_loss, test_accuracy, test_loss)
-
-        self.save()
+            # self.save_data(test_accuracy, test_loss)
 
 
 class MultiHot(object):
