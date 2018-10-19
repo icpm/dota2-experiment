@@ -19,7 +19,7 @@ args = parser.parse_args()
 
 
 def main():
-    domain_adaption_solver = MultiHot(args)
+    domain_adaption_solver = OneHot(args)
     domain_adaption_solver.run()
 
 

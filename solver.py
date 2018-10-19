@@ -44,9 +44,9 @@ class OneHot(object):
     def build_dataloader(self, fold):
         self.train_loader, self.test_loader = dataloader.get_dataloader(self.batch_size, self.test_batch_size, fold=fold)
 
-    def save(self):
+    def save_model(self):
         model_out_path = "model.pth"
-        torch.save(self.model, model_out_path)
+        torch.save(self.model.state_dict(), model_out_path)
         print("Checkpoint saved to {}".format(model_out_path))
 
     def train(self):
@@ -116,6 +116,7 @@ class OneHot(object):
             test_loss, test_accuracy = self.test()
 
             self.save_data(train_accuracy, train_loss, test_accuracy, test_loss)
+            self.save_model()
 
 
 class MultiHot(object):
