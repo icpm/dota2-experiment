@@ -47,6 +47,8 @@ parser.add_argument('--save', default='./logs', type=str, metavar='PATH',
                     help='path to save prune model (default: current directory)')
 parser.add_argument('--arch', default='vgg', type=str, 
                     help='architecture to use')
+parser.add_argument('--scratch',default='', type=str,
+                    help='the PATH to the pruned model')
 parser.add_argument('--depth', default=19, type=int,
                     help='depth of the neural network')
 
@@ -97,6 +99,15 @@ else:
         batch_size=args.test_batch_size, shuffle=True, **kwargs)
 
 model = models.__dict__[args.arch](dataset=args.dataset, depth=args.depth)
+
+if args.scratch:
+    checkpoint = torch.load(args.scratch)
+    model = models.__dict__[args.arch](dataset=args.dataset, depth=args.depth, cfg=checkpoint['cfg'])
+    model_ref = models.__dict__[args.arch](dataset=args.dataset, depth=args.depth, cfg=checkpoint['cfg'])
+    model_ref.load_state_dict(checkpoint['state_dict'])
+    for m0, m1 in zip(model.modules(), model_ref.modules()):
+        if isinstance(m0, models.channel_selection):
+            m0.indexes.data = m1.indexes.data.clone()
 
 if args.cuda:
     model.cuda()

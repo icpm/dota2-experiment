@@ -21,15 +21,17 @@ parser.add_argument('--sparsity-regularization', '-sr', dest='sr', action='store
                     help='train with channel sparsity regularization')
 parser.add_argument('--s', type=float, default=0.0001,
                     help='scale sparse rate (default: 0.0001)')
+parser.add_argument('--refine', default='', type=str, metavar='PATH',
+                    help='path to the pruned model to be fine tuned')
 parser.add_argument('--batch-size', type=int, default=64, metavar='N',
                     help='input batch size for training (default: 64)')
 parser.add_argument('--test-batch-size', type=int, default=256, metavar='N',
                     help='input batch size for testing (default: 256)')
-parser.add_argument('--epochs', type=int, default=160, metavar='N',
+parser.add_argument('--epochs', type=int, default=40, metavar='N',
                     help='number of epochs to train (default: 160)')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
-parser.add_argument('--lr', type=float, default=0.1, metavar='LR',
+parser.add_argument('--lr', type=float, default=0.001, metavar='LR',
                     help='learning rate (default: 0.1)')
 parser.add_argument('--momentum', type=float, default=0.9, metavar='M',
                     help='SGD momentum (default: 0.9)')
@@ -96,7 +98,10 @@ else:
                        ])),
         batch_size=args.test_batch_size, shuffle=True, **kwargs)
 
-model = models.__dict__[args.arch](dataset=args.dataset, depth=args.depth)
+if args.refine:
+    checkpoint = torch.load(args.refine)
+    model = models.__dict__[args.arch](dataset=args.dataset, depth=args.depth, cfg=checkpoint['cfg'])
+    model.load_state_dict(checkpoint['state_dict'])
 
 if args.cuda:
     model.cuda()
@@ -176,9 +181,6 @@ def save_checkpoint(state, is_best, filepath):
 
 best_prec1 = 0.
 for epoch in range(args.start_epoch, args.epochs):
-    if epoch in [args.epochs*0.5, args.epochs*0.75]:
-        for param_group in optimizer.param_groups:
-            param_group['lr'] *= 0.1
     train(epoch)
     prec1 = test()
     history_score[epoch][2] = prec1

@@ -11,11 +11,12 @@ from torchvision import datasets, transforms
 from torch.autograd import Variable
 
 import models
+from compute_flops import print_model_param_flops
 
 
 # Training settings
 parser = argparse.ArgumentParser(description='PyTorch Slimming CIFAR training')
-parser.add_argument('--dataset', type=str, default='cifar10',
+parser.add_argument('--dataset', type=str, default='cifar100',
                     help='training dataset (default: cifar100)')
 parser.add_argument('--sparsity-regularization', '-sr', dest='sr', action='store_true',
                     help='train with channel sparsity regularization')
@@ -47,6 +48,8 @@ parser.add_argument('--save', default='./logs', type=str, metavar='PATH',
                     help='path to save prune model (default: current directory)')
 parser.add_argument('--arch', default='vgg', type=str, 
                     help='architecture to use')
+parser.add_argument('--scratch',default='', type=str,
+                    help='the PATH to the pruned model')
 parser.add_argument('--depth', default=19, type=int,
                     help='depth of the neural network')
 
@@ -96,7 +99,26 @@ else:
                        ])),
         batch_size=args.test_batch_size, shuffle=True, **kwargs)
 
-model = models.__dict__[args.arch](dataset=args.dataset, depth=args.depth)
+if args.refine:
+    checkpoint = torch.load(args.refine)
+    model = models.__dict__[args.arch](dataset=args.dataset, depth=args.depth, cfg=checkpoint['cfg'])
+    model.load_state_dict(checkpoint['state_dict'])
+else:
+    model = models.__dict__[args.arch](dataset=args.dataset, depth=args.depth)
+
+if args.scratch:
+    checkpoint = torch.load(args.scratch)
+    model = models.__dict__[args.arch](dataset=args.dataset, depth=args.depth, cfg=checkpoint['cfg'])
+    model_ref = models.__dict__[args.arch](dataset=args.dataset, depth=args.depth, cfg=checkpoint['cfg'])
+    model_ref.load_state_dict(checkpoint['state_dict'])
+    for m0, m1 in zip(model.modules(), model_ref.modules()):
+        if isinstance(m0, models.channel_selection):
+            m0.indexes.data = m1.indexes.data.clone()
+
+    model_base = models.__dict__[args.arch](dataset=args.dataset, depth=args.depth)
+    base_flops = print_model_param_flops(model_base, 32)
+    pruned_flops = print_model_param_flops(model, 32)
+    args.epochs = int(160 * (base_flops / pruned_flops))
 
 if args.cuda:
     model.cuda()
@@ -176,7 +198,7 @@ def save_checkpoint(state, is_best, filepath):
 
 best_prec1 = 0.
 for epoch in range(args.start_epoch, args.epochs):
-    if epoch in [args.epochs*0.5, args.epochs*0.75]:
+    if epoch in [int(args.epochs*0.5), int(args.epochs*0.75)]:
         for param_group in optimizer.param_groups:
             param_group['lr'] *= 0.1
     train(epoch)
