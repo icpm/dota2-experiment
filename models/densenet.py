@@ -3,10 +3,8 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.autograd import Variable
 
-from .channel_selection import channel_selection
-
+from .channelselection import ChannelSelection
 
 __all__ = ['densenet']
 
@@ -14,13 +12,14 @@ __all__ = ['densenet']
 densenet with basic block.
 """
 
+
 class BasicBlock(nn.Module):
     def __init__(self, inplanes, cfg, expansion=1, growthRate=12, dropRate=0):
         super(BasicBlock, self).__init__()
         planes = expansion * growthRate
         self.bn1 = nn.BatchNorm2d(inplanes)
-        self.select = channel_selection(inplanes)
-        self.conv1 = nn.Conv2d(cfg, growthRate, kernel_size=3, 
+        self.select = ChannelSelection(inplanes)
+        self.conv1 = nn.Conv2d(cfg, growthRate, kernel_size=3,
                                padding=1, bias=False)
         self.relu = nn.ReLU(inplace=True)
         self.dropRate = dropRate
@@ -37,11 +36,12 @@ class BasicBlock(nn.Module):
 
         return out
 
+
 class Transition(nn.Module):
     def __init__(self, inplanes, outplanes, cfg):
         super(Transition, self).__init__()
         self.bn1 = nn.BatchNorm2d(inplanes)
-        self.select = channel_selection(inplanes)
+        self.select = ChannelSelection(inplanes)
         self.conv1 = nn.Conv2d(cfg, outplanes, kernel_size=1,
                                bias=False)
         self.relu = nn.ReLU(inplace=True)
@@ -54,41 +54,41 @@ class Transition(nn.Module):
         out = F.avg_pool2d(out, 2)
         return out
 
-class densenet(nn.Module):
 
-    def __init__(self, depth=40, 
-        dropRate=0, dataset='cifar10', growthRate=12, compressionRate=1, cfg = None):
+class densenet(nn.Module):
+    def __init__(self, depth=40,
+                 drop_rate=0, dataset='cifar10', growth_rate=12, compression_rate=1, cfg=None):
         super(densenet, self).__init__()
 
         assert (depth - 4) % 3 == 0, 'depth should be 3n+4'
         n = (depth - 4) // 3
         block = BasicBlock
 
-        self.growthRate = growthRate
-        self.dropRate = dropRate
+        self.growthRate = growth_rate
+        self.dropRate = drop_rate
 
-        if cfg == None:
+        if cfg is None:
             cfg = []
-            start = growthRate*2
+            start = growth_rate * 2
             for i in range(3):
-                cfg.append([start+12*i for i in range(n+1)])
-                start += growthRate*12
+                cfg.append([start + 12 * i for i in range(n + 1)])
+                start += growth_rate * 12
             cfg = [item for sub_list in cfg for item in sub_list]
 
-        assert len(cfg) == 3*n+3, 'length of config variable cfg should be 3n+3'
+        assert len(cfg) == 3 * n + 3, 'length of config variable cfg should be 3n+3'
 
         # self.inplanes is a global variable used across multiple
         # helper functions
-        self.inplanes = growthRate * 2
+        self.inplanes = growth_rate * 2
         self.conv1 = nn.Conv2d(3, self.inplanes, kernel_size=3, padding=1,
                                bias=False)
         self.dense1 = self._make_denseblock(block, n, cfg[0:n])
-        self.trans1 = self._make_transition(compressionRate, cfg[n])
-        self.dense2 = self._make_denseblock(block, n, cfg[n+1:2*n+1])
-        self.trans2 = self._make_transition(compressionRate, cfg[2*n+1])
-        self.dense3 = self._make_denseblock(block, n, cfg[2*n+2:3*n+2])
+        self.trans1 = self._make_transition(compression_rate, cfg[n])
+        self.dense2 = self._make_denseblock(block, n, cfg[n + 1:2 * n + 1])
+        self.trans2 = self._make_transition(compression_rate, cfg[2 * n + 1])
+        self.dense3 = self._make_denseblock(block, n, cfg[2 * n + 2:3 * n + 2])
         self.bn = nn.BatchNorm2d(self.inplanes)
-        self.select = channel_selection(self.inplanes)
+        self.select = ChannelSelection(self.inplanes)
         self.relu = nn.ReLU(inplace=True)
         self.avgpool = nn.AvgPool2d(8)
 
@@ -111,7 +111,7 @@ class densenet(nn.Module):
         assert blocks == len(cfg), 'Length of the cfg parameter is not right.'
         for i in range(blocks):
             # Currently we fix the expansion ratio as the default value
-            layers.append(block(self.inplanes, cfg = cfg[i], growthRate=self.growthRate, dropRate=self.dropRate))
+            layers.append(block(self.inplanes, cfg=cfg[i], growthRate=self.growthRate, dropRate=self.dropRate))
             self.inplanes += self.growthRate
 
         return nn.Sequential(*layers)

@@ -1,18 +1,16 @@
 import math
 
-import torch
 import torch.nn as nn
-from torch.autograd import Variable
-
 
 __all__ = ['vgg']
 
 defaultcfg = {
-    11 : [64, 'M', 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512],
-    13 : [64, 64, 'M', 128, 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512],
-    16 : [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512],
-    19 : [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 256, 'M', 512, 512, 512, 512, 'M', 512, 512, 512, 512],
+    11: [64, 'M', 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512],
+    13: [64, 64, 'M', 128, 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512],
+    16: [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512],
+    19: [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 256, 'M', 512, 512, 512, 512, 'M', 512, 512, 512, 512],
 }
+
 
 class vgg(nn.Module):
     def __init__(self, dataset='cifar10', depth=19, init_weights=True, cfg=None):
@@ -24,13 +22,18 @@ class vgg(nn.Module):
 
         if dataset == 'cifar10':
             num_classes = 10
+            self.classifier = nn.Linear(cfg[-1], num_classes)
         elif dataset == 'cifar100':
             num_classes = 100
-        self.classifier = nn.Linear(cfg[-1], num_classes)
+            self.classifier = nn.Linear(cfg[-1], num_classes)
+        else:
+            raise IOError('dataset is not defined')
+
         if init_weights:
             self._initialize_weights()
 
-    def make_layers(self, cfg, batch_norm=False):
+    @staticmethod
+    def make_layers(cfg, batch_norm=False):
         layers = []
         in_channels = 3
         for v in cfg:
@@ -65,9 +68,3 @@ class vgg(nn.Module):
             elif isinstance(m, nn.Linear):
                 m.weight.data.normal_(0, 0.01)
                 m.bias.data.zero_()
-
-if __name__ == '__main__':
-    net = vgg()
-    x = Variable(torch.FloatTensor(16, 3, 40, 40))
-    y = net(x)
-    print(y.data.shape)

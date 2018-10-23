@@ -3,14 +3,10 @@ import math
 
 import torch.nn as nn
 
-from .channel_selection import channel_selection
-
+from .channelselection import ChannelSelection
 
 __all__ = ['resnet']
 
-"""
-preactivation resnet with bottleneck design.
-"""
 
 class Bottleneck(nn.Module):
     expansion = 4
@@ -18,7 +14,7 @@ class Bottleneck(nn.Module):
     def __init__(self, inplanes, planes, cfg, stride=1, downsample=None):
         super(Bottleneck, self).__init__()
         self.bn1 = nn.BatchNorm2d(inplanes)
-        self.select = channel_selection(inplanes)
+        self.select = ChannelSelection(inplanes)
         self.conv1 = nn.Conv2d(cfg[0], cfg[1], kernel_size=1, bias=False)
         self.bn2 = nn.BatchNorm2d(cfg[1])
         self.conv2 = nn.Conv2d(cfg[1], cfg[2], kernel_size=3, stride=stride,
@@ -52,6 +48,7 @@ class Bottleneck(nn.Module):
 
         return out
 
+
 class resnet(nn.Module):
     def __init__(self, depth=164, dataset='cifar10', cfg=None):
         super(resnet, self).__init__()
@@ -62,18 +59,19 @@ class resnet(nn.Module):
 
         if cfg is None:
             # Construct config variable.
-            cfg = [[16, 16, 16], [64, 16, 16]*(n-1), [64, 32, 32], [128, 32, 32]*(n-1), [128, 64, 64], [256, 64, 64]*(n-1), [256]]
+            cfg = [[16, 16, 16], [64, 16, 16] * (n - 1), [64, 32, 32], [128, 32, 32] * (n - 1), [128, 64, 64],
+                   [256, 64, 64] * (n - 1), [256]]
             cfg = [item for sub_list in cfg for item in sub_list]
 
         self.inplanes = 16
 
         self.conv1 = nn.Conv2d(3, 16, kernel_size=3, padding=1,
                                bias=False)
-        self.layer1 = self._make_layer(block, 16, n, cfg = cfg[0:3*n])
-        self.layer2 = self._make_layer(block, 32, n, cfg = cfg[3*n:6*n], stride=2)
-        self.layer3 = self._make_layer(block, 64, n, cfg = cfg[6*n:9*n], stride=2)
+        self.layer1 = self._make_layer(block, 16, n, cfg=cfg[0:3 * n])
+        self.layer2 = self._make_layer(block, 32, n, cfg=cfg[3 * n:6 * n], stride=2)
+        self.layer3 = self._make_layer(block, 64, n, cfg=cfg[6 * n:9 * n], stride=2)
         self.bn = nn.BatchNorm2d(64 * block.expansion)
-        self.select = channel_selection(64 * block.expansion)
+        self.select = ChannelSelection(64 * block.expansion)
         self.relu = nn.ReLU(inplace=True)
         self.avgpool = nn.AvgPool2d(8)
 
@@ -98,11 +96,10 @@ class resnet(nn.Module):
                           kernel_size=1, stride=stride, bias=False),
             )
 
-        layers = []
-        layers.append(block(self.inplanes, planes, cfg[0:3], stride, downsample))
+        layers = [block(self.inplanes, planes, cfg[0:3], stride, downsample)]
         self.inplanes = planes * block.expansion
         for i in range(1, blocks):
-            layers.append(block(self.inplanes, planes, cfg[3*i: 3*(i+1)]))
+            layers.append(block(self.inplanes, planes, cfg[3 * i: 3 * (i + 1)]))
 
         return nn.Sequential(*layers)
 

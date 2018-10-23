@@ -1,14 +1,10 @@
 import argparse
-import numpy as np
 import os
 
-import torch
-import torch.nn as nn
 from torch.autograd import Variable
 from torchvision import datasets, transforms
 
 from models import *
-
 
 # Prune settings
 parser = argparse.ArgumentParser(description='PyTorch Slimming CIFAR prune')
@@ -59,7 +55,7 @@ index = 0
 for m in model.modules():
     if isinstance(m, nn.BatchNorm2d):
         size = m.weight.data.shape[0]
-        bn[index:(index+size)] = m.weight.data.abs().clone()
+        bn[index:(index + size)] = m.weight.data.abs().clone()
         index += size
 
 y, i = torch.sort(bn)
@@ -79,13 +75,14 @@ for k, m in enumerate(model.modules()):
         cfg.append(int(torch.sum(mask)))
         cfg_mask.append(mask.clone())
         print('layer index: {:d} \t total channel: {:d} \t remaining channel: {:d}'.
-            format(k, mask.shape[0], int(torch.sum(mask))))
+              format(k, mask.shape[0], int(torch.sum(mask))))
     elif isinstance(m, nn.MaxPool2d):
         cfg.append('M')
 
-pruned_ratio = pruned/total
+pruned_ratio = pruned / total
 
 print('Pre-processing Successful!')
+
 
 # simple test model after Pre-processing prune (simple set BN scales to zeros)
 def test(model):
@@ -111,12 +108,13 @@ def test(model):
             data, target = data.cuda(), target.cuda()
         data, target = Variable(data, volatile=True), Variable(target)
         output = model(data)
-        pred = output.data.max(1, keepdim=True)[1] # get the index of the max log-probability
+        pred = output.data.max(1, keepdim=True)[1]  # get the index of the max log-probability
         correct += pred.eq(target.data.view_as(pred)).cpu().sum()
 
     print('\nTest set: Accuracy: {}/{} ({:.1f}%)\n'.format(
         correct, len(test_loader.dataset), 100. * correct / len(test_loader.dataset)))
     return correct / float(len(test_loader.dataset))
+
 
 acc = test(model)
 
@@ -129,9 +127,9 @@ if args.cuda:
 num_parameters = sum([param.nelement() for param in newmodel.parameters()])
 savepath = os.path.join(args.save, "prune.txt")
 with open(savepath, "w") as fp:
-    fp.write("Configuration: \n"+str(cfg)+"\n")
-    fp.write("Number of parameters: \n"+str(num_parameters)+"\n")
-    fp.write("Test accuracy: \n"+str(acc))
+    fp.write("Configuration: \n" + str(cfg) + "\n")
+    fp.write("Number of parameters: \n" + str(num_parameters) + "\n")
+    fp.write("Test accuracy: \n" + str(acc))
 
 layer_id_in_cfg = 0
 start_mask = torch.ones(3)
@@ -140,7 +138,7 @@ for [m0, m1] in zip(model.modules(), newmodel.modules()):
     if isinstance(m0, nn.BatchNorm2d):
         idx1 = np.squeeze(np.argwhere(np.asarray(end_mask.cpu().numpy())))
         if idx1.size == 1:
-            idx1 = np.resize(idx1,(1,))
+            idx1 = np.resize(idx1, (1,))
         m1.weight.data = m0.weight.data[idx1.tolist()].clone()
         m1.bias.data = m0.bias.data[idx1.tolist()].clone()
         m1.running_mean = m0.running_mean[idx1.tolist()].clone()

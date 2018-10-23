@@ -16,3 +16,4 @@ __pycache__/
 env/
 build/
 models/model.pth
+data.cifar10/
