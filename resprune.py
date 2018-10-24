@@ -1,31 +1,19 @@
 import argparse
-import numpy as np
 import os
 
-import torch
-import torch.nn as nn
 from torch.autograd import Variable
 from torchvision import datasets, transforms
 
 from models import *
 
-
-# Prune settings
 parser = argparse.ArgumentParser(description='PyTorch Slimming CIFAR prune')
-parser.add_argument('--dataset', type=str, default='cifar100',
-                    help='training dataset (default: cifar10)')
-parser.add_argument('--test-batch-size', type=int, default=256, metavar='N',
-                    help='input batch size for testing (default: 256)')
-parser.add_argument('--no-cuda', action='store_true', default=False,
-                    help='disables CUDA training')
-parser.add_argument('--depth', type=int, default=164,
-                    help='depth of the resnet')
-parser.add_argument('--percent', type=float, default=0.5,
-                    help='scale sparse rate (default: 0.5)')
-parser.add_argument('--model', default='', type=str, metavar='PATH',
-                    help='path to the model (default: none)')
-parser.add_argument('--save', default='', type=str, metavar='PATH',
-                    help='path to save pruned model (default: none)')
+parser.add_argument('--dataset', type=str, default='cifar100', help='training dataset (default: cifar10)')
+parser.add_argument('--test-batch-size', type=int, default=256, metavar='N', help='input batch size for testing (default: 256)')
+parser.add_argument('--no-cuda', action='store_true', default=False, help='disables CUDA training')
+parser.add_argument('--depth', type=int, default=164, help='depth of the resnet')
+parser.add_argument('--percent', type=float, default=0.5, help='scale sparse rate (default: 0.5)')
+parser.add_argument('--model', default='', type=str, metavar='PATH', help='path to the model (default: none)')
+parser.add_argument('--save', default='', type=str, metavar='PATH', help='path to save pruned model (default: none)')
 
 args = parser.parse_args()
 args.cuda = not args.no_cuda and torch.cuda.is_available()
@@ -89,6 +77,7 @@ pruned_ratio = pruned/total
 
 print('Pre-processing Successful!')
 
+
 # simple test model after Pre-processing prune (simple set BN scales to zeros)
 def test(model):
     kwargs = {'num_workers': 1, 'pin_memory': True} if args.cuda else {}
@@ -119,6 +108,7 @@ def test(model):
     print('\nTest set: Accuracy: {}/{} ({:.1f}%)\n'.format(
         correct, len(test_loader.dataset), 100. * correct / len(test_loader.dataset)))
     return correct / float(len(test_loader.dataset))
+
 
 acc = test(model)
 

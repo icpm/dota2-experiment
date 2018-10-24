@@ -1,14 +1,16 @@
 from __future__ import print_function
-import os
+
 import argparse
+import os
 import shutil
+
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from torchvision import datasets, transforms
 from torch.autograd import Variable
+from torchvision import datasets, transforms
 
 import models
 from compute_flops import print_model_param_flops
