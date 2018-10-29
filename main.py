@@ -2,7 +2,7 @@ from __future__ import print_function
 
 import argparse
 
-from solver import MainSolver
+from solver import Main
 
 parser = argparse.ArgumentParser(description='PyTorch Slimming CIFAR training')
 parser.add_argument('--dataset', type=str, default='cifar10', help='training dataset (default: cifar100)')
@@ -27,5 +27,5 @@ args = parser.parse_args()
 
 
 if __name__ == '__main__':
-    a = MainSolver(args)
-    a.run()
+    solver = Main(args)
+    solver.run()

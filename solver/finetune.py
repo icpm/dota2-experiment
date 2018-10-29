@@ -14,7 +14,7 @@ from torchvision import datasets, transforms
 import models
 
 
-class Main(object):
+class Finetune(object):
     def __init__(self, args):
         self.args = args
         self.train_loader = None
