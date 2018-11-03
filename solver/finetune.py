@@ -5,6 +5,7 @@ import shutil
 
 import numpy as np
 import torch
+import torch.backends.cudnn as cudnn
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
@@ -72,6 +73,7 @@ class Finetune(object):
         torch.manual_seed(self.args.seed)
         if self.cuda:
             torch.cuda.manual_seed(self.args.seed)
+            cudnn.benchmark = True
 
         if not os.path.exists(self.args.save):
             os.makedirs(self.args.save)
@@ -127,9 +129,9 @@ class Finetune(object):
 
     @staticmethod
     def save_checkpoint(state, is_best, filepath):
-        torch.save(state, os.path.join(filepath, 'checkpoint.pth.tar'))
+        torch.save(state, os.path.join(filepath, 'finetune.pth.tar'))
         if is_best:
-            shutil.copyfile(os.path.join(filepath, 'checkpoint.pth.tar'), os.path.join(filepath, 'model_best.pth.tar'))
+            shutil.copyfile(os.path.join(filepath, 'finetune.pth.tar'), os.path.join(filepath, 'finetune_best.pth.tar'))
 
     def run(self):
         self.initialize_all()

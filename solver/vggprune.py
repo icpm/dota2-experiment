@@ -79,6 +79,7 @@ class VGGPrune(object):
         acc = self.test(self.model)
 
         with open(savepath, "w") as fp:
+            fp.write("Number of parameters: \n" + str(sum([param.nelement() for param in self.model.parameters()])) + "\n")
             fp.write("Configuration: \n" + str(self.cfg) + "\n")
             fp.write("Number of parameters: \n" + str(num_parameters) + "\n")
             fp.write("Test accuracy: \n" + str(acc))

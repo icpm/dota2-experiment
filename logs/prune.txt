@@ -1,6 +1,8 @@
-Configuration: 
-[54, 63, 'M', 128, 128, 'M', 256, 255, 240, 227, 'M', 174, 58, 19, 19, 'M', 6, 5, 48, 246]
 Number of parameters: 
-2751187
+20035018
+Configuration: 
+[37, 64, 'M', 126, 124, 'M', 223, 198, 167, 101, 'M', 266, 276, 279, 286, 'M', 283, 294, 288, 290]
+Number of parameters: 
+6645376
 Test accuracy: 
 tensor(0)
