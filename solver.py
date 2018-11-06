@@ -47,7 +47,6 @@ class OneHot(object):
         self.train_loader, self.test_loader = dataloader.get_dataloader(self.batch_size, self.test_batch_size)
 
     def train(self):
-
         self.model.eval()
         count = np.zeros(10)
         res = np.zeros((10, 64, 56, 56))
@@ -87,7 +86,8 @@ class OneHot(object):
                     test_correct += 1 if _target.numpy() == target[i].cpu().numpy() else 0
 
                 total += data.size(0)
-                progress_bar(batch_num, len(self.test_loader), 'accuracy: %.4f' % (test_correct / total))
+                # progress_bar(batch_num, len(self.test_loader), 'accuracy: %.4f' % (test_correct / total))
+                print(test_correct / total)
         return total, test_correct / total
 
     def get_label(self, prediction):
