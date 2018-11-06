@@ -255,7 +255,7 @@ class OneHot(object):
             train_loss, train_accuracy = self.train()
             test_loss, test_accuracy = self.test()
 
-            # self.save_data(train_accuracy, train_loss, test_accuracy, test_loss)
+            self.save_data(train_accuracy, train_loss, test_accuracy, test_loss)
 
 
 class MultiHot(object):
