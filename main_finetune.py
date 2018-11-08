@@ -5,7 +5,6 @@ import argparse
 from solver import Finetune
 
 parser = argparse.ArgumentParser(description='PyTorch Slimming CIFAR training')
-parser.add_argument('--dataset', type=str, default='cifar10', help='training dataset (default: cifar100)')
 parser.add_argument('--sparsity-regularization', '-sr', dest='sr', action='store_true', help='train with channel sparsity regularization')
 parser.add_argument('--s', type=float, default=0.0001, help='scale sparse rate (default: 0.0001)')
 parser.add_argument('--refine', default='', type=str, metavar='PATH', help='path to the pruned model to be fine tuned')
@@ -21,8 +20,6 @@ parser.add_argument('--no-cuda', action='store_true', default=False, help='disab
 parser.add_argument('--seed', type=int, default=1, metavar='S', help='random seed (default: 1)')
 parser.add_argument('--log-interval', type=int, default=100, metavar='N', help='how many batches to wait before logging training status')
 parser.add_argument('--save', default='./logs', type=str, metavar='PATH', help='path to save prune model (default: current directory)')
-parser.add_argument('--arch', default='vgg', type=str, help='architecture to use')
-parser.add_argument('--depth', default=19, type=int, help='depth of the neural network')
 
 args = parser.parse_args()
 
