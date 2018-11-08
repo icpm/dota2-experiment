@@ -1,8 +1,0 @@
-Number of parameters: 
-20035018
-Configuration: 
-[37, 64, 'M', 126, 124, 'M', 223, 198, 167, 101, 'M', 266, 276, 279, 286, 'M', 283, 294, 288, 290]
-Number of parameters: 
-6645376
-Test accuracy: 
-tensor(0)

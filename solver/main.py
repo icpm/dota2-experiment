@@ -7,12 +7,10 @@ import numpy as np
 import torch
 import torch.backends.cudnn as cudnn
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.optim as optim
-from torch.utils import data
-from torchvision import datasets, transforms
 
 import models
+from dataloader import get_dataloader
 
 
 class Main(object):
@@ -22,51 +20,17 @@ class Main(object):
         self.test_loader = None
         self.model = None
         self.optimizer = None
+        self.criterion = None
         self.cuda = not args.no_cuda and torch.cuda.is_available()
         self.device = torch.device('cuda' if self.cuda else 'cpu')
         self.history_score = np.zeros((args.epochs - args.start_epoch + 1, 3))
 
     def initialize_dataset(self):
-        kwargs = {'num_workers': 1, 'pin_memory': True} if self.cuda else {}
-
-        if self.args.dataset == 'cifar10':
-            self.train_loader = torch.utils.data.DataLoader(
-                datasets.CIFAR10('./data.cifar10', train=True, download=True,
-                                 transform=transforms.Compose([
-                                     transforms.Pad(4),
-                                     transforms.RandomCrop(32),
-                                     transforms.RandomHorizontalFlip(),
-                                     transforms.ToTensor(),
-                                     transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
-                                 ])),
-                batch_size=self.args.batch_size, shuffle=True, **kwargs)
-            self.test_loader = torch.utils.data.DataLoader(
-                datasets.CIFAR10('./data.cifar10', train=False, transform=transforms.Compose([
-                    transforms.ToTensor(),
-                    transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
-                ])),
-                batch_size=self.args.test_batch_size, shuffle=True, **kwargs)
-
-        else:
-            self.train_loader = torch.utils.data.DataLoader(
-                datasets.CIFAR100('./data.cifar100', train=True, download=True,
-                                  transform=transforms.Compose([
-                                      transforms.Pad(4),
-                                      transforms.RandomCrop(32),
-                                      transforms.RandomHorizontalFlip(),
-                                      transforms.ToTensor(),
-                                      transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
-                                  ])),
-                batch_size=self.args.batch_size, shuffle=True, **kwargs)
-            self.test_loader = torch.utils.data.DataLoader(
-                datasets.CIFAR100('./data.cifar100', train=False, transform=transforms.Compose([
-                    transforms.ToTensor(),
-                    transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
-                ])),
-                batch_size=self.args.test_batch_size, shuffle=True, **kwargs)
+        self.train_loader, self.test_loader = get_dataloader(self.args.batch_size, self.args.test_batch_size)
 
     def initialize_model(self):
-        self.model = models.__dict__[self.args.arch](dataset=self.args.dataset, depth=self.args.depth).to(self.device)
+        self.model = models.__dict__[self.args.arch](depth=self.args.depth).to(self.device)
+        self.criterion = nn.CrossEntropyLoss().to(self.device)
         self.optimizer = optim.SGD(self.model.parameters(), lr=self.args.lr, momentum=self.args.momentum, weight_decay=self.args.weight_decay)
         print(self.model)
 
@@ -92,10 +56,11 @@ class Main(object):
         avg_loss = 0.
         train_acc = 0.
         for batch_i, (_d, _t) in enumerate(self.train_loader):
-            _d, _t = _d.to(self.device), _t.to(self.device)
+            _d, _t = _d.to(self.device).float(), _t.to(self.device).float()
             self.optimizer.zero_grad()
             output = self.model(_d)
-            loss = F.cross_entropy(output, _t)
+            _t = torch.max(_t, 1)[1]
+            loss = self.criterion(output, _t)
             avg_loss += loss.item()
             pred = output.data.max(1, keepdim=True)[1]
             train_acc += pred.eq(_t.data.view_as(pred)).cpu().sum()
@@ -116,9 +81,10 @@ class Main(object):
         correct = 0
         with torch.no_grad():
             for _d, _t in self.test_loader:
-                _d, _t = _d.to(self.device), _t.to(self.device)
+                _d, _t = _d.to(self.device), _t.to(self.device).long()
                 output = self.model(_d)
-                test_loss += F.cross_entropy(output, _t, size_average=False).item()  # sum up batch loss
+                _t = torch.max(_t, 1)[1]
+                test_loss += self.criterion(output, _t).item()  # sum up batch loss
                 pred = output.data.max(1, keepdim=True)[1]  # get the index of the max log-probability
                 correct += pred.eq(_t.data.view_as(pred)).cpu().sum()
 
@@ -136,7 +102,6 @@ class Main(object):
 
     def run(self):
         self.initialize_all()
-
         best_prec = 0.
         for epoch in range(self.args.start_epoch, self.args.epochs):
             if epoch in [self.args.epochs * 0.5, self.args.epochs * 0.75]:

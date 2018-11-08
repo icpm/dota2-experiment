@@ -12,7 +12,6 @@ The `dataset` argument specifies which dataset to use: `cifar10` or `cifar100`. 
 ```shell
 python main.py --dataset cifar10 --arch vgg --depth 19
 python main.py --dataset cifar10 --arch resnet --depth 164
-python main.py --dataset cifar10 --arch densenet --depth 40
 ```
 
 ## Train with Sparsity
@@ -20,7 +19,6 @@ python main.py --dataset cifar10 --arch densenet --depth 40
 ```shell
 python main.py -sr --s 0.0001 --dataset cifar10 --arch vgg --depth 19
 python main.py -sr --s 0.00001 --dataset cifar10 --arch resnet --depth 164
-python main.py -sr --s 0.00001 --dataset cifar10 --arch densenet --depth 40
 ```
 
 ## Prune
@@ -28,7 +26,6 @@ python main.py -sr --s 0.00001 --dataset cifar10 --arch densenet --depth 40
 ```shell
 python vggprune.py --dataset cifar10 --depth 19 --percent 0.7 --model [PATH TO THE MODEL] --save [DIRECTORY TO STORE RESULT]
 python resprune.py --dataset cifar10 --depth 164 --percent 0.4 --model [PATH TO THE MODEL] --save [DIRECTORY TO STORE RESULT]
-python denseprune.py --dataset cifar10 --depth 40 --percent 0.4 --model [PATH TO THE MODEL] --save [DIRECTORY TO STORE RESULT]
 ```
 The pruned model will be named `pruned.pth.tar`.
 
@@ -37,20 +34,4 @@ The pruned model will be named `pruned.pth.tar`.
 ```shell
 python main_finetune.py --refine [PATH TO THE PRUNED MODEL] --dataset cifar10 --arch vgg --depth 19
 python main_finetune.py --refine [PATH TO THE PRUNED MODEL] --dataset cifar10 --arch resnet --depth 164
-python main_finetune.py --refine [PATH TO THE PRUNED MODEL] --dataset cifar10 --arch densenet --depth 40
 ```
-
-## Scratch-E
-```
-python main_E.py --scratch [PATH TO THE PRUNED MODEL] --dataset cifar10 --arch vgg --depth 19
-python main_E.py --scratch [PATH TO THE PRUNED MODEL] --dataset cifar10 --arch resnet --depth 164
-python main_E.py --scratch [PATH TO THE PRUNED MODEL] --dataset cifar10 --arch densenet --depth 40
-```
-
-## Scratch-B
-```
-python main_B.py --scratch [PATH TO THE PRUNED MODEL] --dataset cifar10 --arch vgg --depth 19
-python main_B.py --scratch [PATH TO THE PRUNED MODEL] --dataset cifar10 --arch resnet --depth 164
-python main_B.py --scratch [PATH TO THE PRUNED MODEL] --dataset cifar10 --arch densenet --depth 40
-```
-

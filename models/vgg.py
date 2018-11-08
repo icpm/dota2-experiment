@@ -13,21 +13,19 @@ defaultcfg = {
 
 
 class vgg(nn.Module):
-    def __init__(self, dataset='cifar10', depth=19, init_weights=True, cfg=None):
+    def __init__(self, depth=19, init_weights=True, cfg=None):
         super(vgg, self).__init__()
         if cfg is None:
             cfg = defaultcfg[depth]
 
         self.feature = self.make_layers(cfg, True)
 
-        if dataset == 'cifar10':
-            num_classes = 10
-            self.classifier = nn.Linear(cfg[-1], num_classes)
-        elif dataset == 'cifar100':
-            num_classes = 100
-            self.classifier = nn.Linear(cfg[-1], num_classes)
-        else:
-            raise IOError('dataset is not defined')
+        self.classifier = nn.Sequential(
+            nn.Linear(512 * 14 * 14, 4096),
+            nn.ReLU(True),
+            nn.Dropout(),
+            nn.Linear(4096, 10),
+        )
 
         if init_weights:
             self._initialize_weights()
@@ -50,7 +48,6 @@ class vgg(nn.Module):
 
     def forward(self, x):
         x = self.feature(x)
-        x = nn.AvgPool2d(2)(x)
         x = x.view(x.size(0), -1)
         y = self.classifier(x)
         return y
