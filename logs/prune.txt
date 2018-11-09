@@ -1,3 +1,0 @@
-Before pruning: Test Acc:  0.33
-Total conv params: 23454912, Pruned conv params: 14072949.0, Pruned ratio: 0.6000000834465027
-After Pruning: Test Acc:  0.06
