@@ -33,7 +33,8 @@ class Finetune(object):
         model = get_model().to(self.device)
         checkpoint = torch.load('logs/checkpoint.pth.tar')['state_dict']
         model.load_state_dict(checkpoint)
-        self.model, _, _, _ = prune(model, 0.6)
+        self.model, _, _ = prune(model, 0.6)
+        # self.model = model
 
         self.criterion = nn.CrossEntropyLoss().to(self.device)
         self.optimizer = optim.SGD(self.model.parameters(), lr=self.args.lr, momentum=self.args.momentum, weight_decay=self.args.weight_decay)
