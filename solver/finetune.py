@@ -2,6 +2,7 @@ from __future__ import print_function
 
 import os
 import shutil
+import time
 
 import numpy as np
 import torch
@@ -9,9 +10,9 @@ import torch.backends.cudnn as cudnn
 import torch.nn as nn
 import torch.optim as optim
 
-from models import get_model
 from dataloader import get_dataloader
-from prune import prune, get_parameter_num
+from models import resnet50_official, thinet50, thinet30, thinet70
+from prune import get_parameter_num
 
 
 class Finetune(object):
@@ -30,10 +31,7 @@ class Finetune(object):
         self.train_loader, self.test_loader = get_dataloader(self.args.batch_size, self.args.test_batch_size)
 
     def initialize_model(self):
-        model = get_model().to(self.device)
-        checkpoint = torch.load('logs/checkpoint.pth.tar')['state_dict']
-        model.load_state_dict(checkpoint)
-        self.model, _, _ = prune(model, 0.6)
+        self.model = thinet30().to(self.device)
         # self.model = model
 
         self.criterion = nn.CrossEntropyLoss().to(self.device)
@@ -125,7 +123,6 @@ class Finetune(object):
                 'best_prec1': best_prec,
                 'optimizer': self.optimizer.state_dict(),
             }, is_best, filepath=self.args.save)
-
         print("Best accuracy: " + str(best_prec))
         self.history_score[-1][0] = best_prec
         np.savetxt(os.path.join(self.args.save, 'finetune.txt'), self.history_score, fmt='%10.5f', delimiter=',')

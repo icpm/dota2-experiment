@@ -7,7 +7,7 @@ from solver import Finetune
 parser = argparse.ArgumentParser(description='PyTorch Slimming CIFAR training')
 parser.add_argument('--sparsity-regularization', '-sr', dest='sr', action='store_true', help='train with channel sparsity regularization')
 parser.add_argument('--s', type=float, default=0.0001, help='scale sparse rate (default: 0.0001)')
-parser.add_argument('--batch-size', type=int, default=32, metavar='N', help='input batch size for training (default: 64)')
+parser.add_argument('--batch-size', type=int, default=16, metavar='N', help='input batch size for training (default: 64)')
 parser.add_argument('--test-batch-size', type=int, default=64, metavar='N',  help='input batch size for testing (default: 256)')
 parser.add_argument('--epochs', type=int, default=160, metavar='N', help='number of epochs to train (default: 160)')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N', help='manual epoch number (useful on restarts)')

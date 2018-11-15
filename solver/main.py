@@ -9,7 +9,6 @@ import torch.backends.cudnn as cudnn
 import torch.nn as nn
 import torch.optim as optim
 
-from models import get_model
 from dataloader import get_dataloader
 from prune import get_parameter_num
 
@@ -30,7 +29,7 @@ class Main(object):
         self.train_loader, self.test_loader = get_dataloader(self.args.batch_size, self.args.test_batch_size)
 
     def initialize_model(self):
-        self.model = get_model().to(self.device)
+        # self.model = get_model().to(self.device)
         self.criterion = nn.CrossEntropyLoss().to(self.device)
         self.optimizer = optim.SGD(self.model.parameters(), lr=self.args.lr, momentum=self.args.momentum, weight_decay=self.args.weight_decay)
         print(get_parameter_num(self.model))
