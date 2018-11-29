@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 import os
+import time
 
 import numpy as np
 import torch
@@ -74,6 +75,7 @@ class OneHot(object):
         total = 0
 
         with torch.no_grad():
+            _start_time = time.time()
             for batch_num, (data, target) in enumerate(self.test_loader):
                 data, target = data.to(self.device), target.to(self.device).float()
                 prediction = self.model(data)
@@ -88,6 +90,8 @@ class OneHot(object):
                 total += data.size(0)
                 # progress_bar(batch_num, len(self.test_loader), 'accuracy: %.4f' % (test_correct / total))
                 print(test_correct / total)
+
+            print(time.time() - _start_time)
         return total, test_correct / total
 
     def get_label(self, prediction):
