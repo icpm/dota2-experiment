@@ -2,7 +2,7 @@ import torch.nn as nn
 import torch.utils.model_zoo as model_zoo
 
 
-__all__ = ['thinet30', 'thinet50', 'thinet70', 'resnet50_official']
+__all__ = ['thinet30', 'thinet50', 'thinet70', 'resnet152_official']
 
 model_urls = {
     'resnet50': 'https://download.pytorch.org/models/resnet50-19c8e357.pth',
@@ -163,7 +163,7 @@ def thinet70(pretrained=False, **kwargs):
     return model
 
 
-def resnet50_official(pretrained=False, **kwargs):
+def resnet152_official(pretrained=False, **kwargs):
     """Constructs a ResNet-50 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet

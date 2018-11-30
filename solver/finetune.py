@@ -11,7 +11,7 @@ import torch.nn as nn
 import torch.optim as optim
 
 from dataloader import get_dataloader
-from models import resnet50_official, thinet50, thinet30, thinet70
+from models import resnet152_official, thinet50, thinet30, thinet70
 from prune import get_parameter_num
 
 
@@ -31,7 +31,7 @@ class Finetune(object):
         self.train_loader, self.test_loader = get_dataloader(self.args.batch_size, self.args.test_batch_size)
 
     def initialize_model(self):
-        self.model = thinet30().to(self.device)
+        self.model = resnet152_official(pretrained=False).to(self.device)
         # self.model = model
 
         self.criterion = nn.CrossEntropyLoss().to(self.device)
@@ -59,6 +59,7 @@ class Finetune(object):
         self.model.train()
         avg_loss = 0.
         train_acc = 0.
+        _s = time.time()
         for batch_i, (_d, _t) in enumerate(self.train_loader):
             _d, _t = _d.to(self.device).float(), _t.to(self.device).float()
             self.optimizer.zero_grad()
@@ -76,6 +77,7 @@ class Finetune(object):
                 print('Train Epoch: {} [{}/{} ({:.1f}%)]\tLoss: {:.6f}'.format(
                     epoch, batch_i * len(_d), len(self.train_loader.dataset), 100. * batch_i / len(self.train_loader),
                     loss.item()))
+        print(time.time() - _s)
         self.history_score[epoch][0] = avg_loss / len(self.train_loader)
         self.history_score[epoch][1] = train_acc / float(len(self.train_loader))
 
@@ -84,6 +86,7 @@ class Finetune(object):
         test_loss = 0
         correct = 0
         with torch.no_grad():
+            _s = time.time()
             for _d, _t in self.test_loader:
                 _d, _t = _d.to(self.device), _t.to(self.device).long()
                 output = self.model(_d)
@@ -91,7 +94,7 @@ class Finetune(object):
                 test_loss += self.criterion(output, _t).item()  # sum up batch loss
                 pred = output.data.max(1, keepdim=True)[1]  # get the index of the max log-probability
                 correct += pred.eq(_t.data.view_as(pred)).cpu().sum()
-
+            print(time.time() - _s)
         test_loss /= len(self.test_loader.dataset)
         print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.5f}%)\n'.format(
             test_loss, correct, len(self.test_loader.dataset),
