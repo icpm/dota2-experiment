@@ -101,7 +101,7 @@ class Stylizer(object):
             image = image.resize((int(image.size[0] / scale), int(image.size[1] / scale)), Image.ANTIALIAS)
         return image
 
-    def train(self, data):
+    def train(self, data, _loss):
         self.transformer.train()
 
         target = self.transformer(data)
@@ -111,7 +111,6 @@ class Stylizer(object):
         target_feature = self.vgg(target)
         data_feature = self.vgg(data)
         content_loss = self.content_weight * self.criterion(target_feature.relu2_2, data_feature.relu2_2)
-
         style_loss = 0.
         for current_target_feature, current_gram_style in zip(target_feature, self.gram_style):
             current_target_feature = self.gram_matrix(current_target_feature)
@@ -165,9 +164,9 @@ class OneHot(object):
         self.scheduler = ReduceLROnPlateau(self.optimizer, 'min', patience=1, verbose=True)
 
         # initialize stylizer
-        # self.stylizer = Stylizer('./data/dota.jpg')
-        # self.stylizer.build_model()
-        # self.stylizer.get_style()
+        self.stylizer = Stylizer('./data/dota.jpg')
+        self.stylizer.build_model()
+        self.stylizer.get_style()
 
     def build_dataloader(self, fold):
         self.train_loader, self.test_loader = dataloader.get_dataloader(self.batch_size, self.test_batch_size, fold=fold)
@@ -177,11 +176,11 @@ class OneHot(object):
         torch.save(self.model, model_out_path)
         print("Checkpoint saved to {}".format(model_out_path))
 
-    def stylizing(self, weight):
+    def stylizing(self, weight, loss):
         out = None
         for i in range(4):
             data = weight[16 * i: 16 * i + 16]
-            temp = self.stylizer.train(data)
+            temp = self.stylizer.train(data, loss)
             if i == 0:
                 out = temp
             else:
@@ -205,7 +204,7 @@ class OneHot(object):
             train_loss += loss.item()
             train_correct += np.sum(torch.max(prediction, 1)[1].cpu().numpy() == target.cpu().numpy())
             total += data.size(0)
-            # self.model.conv1.weight.data = self.stylizing(self.model.conv1.weight.data)
+            self.model.conv1.weight.data = self.stylizing(self.model.conv1.weight.data, loss)
 
             progress_bar(batch_num, len(self.train_loader), 'train loss: %.4f | accuracy: %.4f'
                          % (train_loss / (batch_num + 1), train_correct / total))
